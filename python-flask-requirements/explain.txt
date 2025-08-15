@@ -1,0 +1,31 @@
+The nly difference b/w the python-flask & python-flask requiremnst is, here we are giving our requirements in a separaet file whc will be requiemnst.txt. So, the use / advanatge of ths file is 
+1. It’s just a plain text file listing the Python libraries and their versions your app depends on. 
+
+2.  Why do you need it in Docker?
+When Docker builds your image:
+
+FROM python:
+
+Your base image does NOT include Flask (or any web framework).
+
+Docker sees:
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+This tells Docker:
+Copy the requirements.txt file into the container.
+
+Install everything listed in it using pip.
+
+Without this step, your container would run app.py and immediately crash:
+
+3. Ynot just install inside the Dockerfile without requirements.txt?
+You could do:
+
+RUN pip install flask in the docker file as we did
+
+But requirements.txt is better because:
+Reusability → You can use the same file on your local machine (pip install -r requirements.txt).
+Version control → You can lock versions (flask==3.0.2) to avoid "it works on my machine" issues.
+Clean Docker caching → If only your app code changes, Docker won’t reinstall dependencies unless requirements.txt changes (faster builds).

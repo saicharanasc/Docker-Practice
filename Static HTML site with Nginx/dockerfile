@@ -1,0 +1,5 @@
+FROM nginx:alpine
+WORKDIR /sai
+COPY index.html /sai
+RUN echo "Nginx is running with a static HTML site" > /sai/message.txt
+CMD ["nginx", "-g", "daemon off;"]

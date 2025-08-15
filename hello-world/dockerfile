@@ -1,0 +1,17 @@
+FROM alpine:latest
+
+# This is like using a binary & Run the executable echo directly.
+CMD ["echo", "Hello, Docker!"] 
+
+# CMD ["sh", "-c", "echo welcome to docker"] -> Run the program sh.  pass it the arguments -c and "echo welcome to docker".   sh -c "<command>" means "run this command string inside a shell".
+
+# CMD sh -c "echo welcome to docker"
+# CMD echo hi welcome to docker
+
+
+# This is just to print hello world using docker file when u start the container
+
+# The 'alpine' base image is a minimal Docker image based on Alpine Linux.
+# It is very small (about 5MB), which makes it fast to download and efficient to use.
+# For simple tasks like printing "Hello, Docker!", using a minimal image like Alpine reduces build time, image size, and attack surface.
+# Heavier images (like Ubuntu) are unnecessary for such simple use cases.

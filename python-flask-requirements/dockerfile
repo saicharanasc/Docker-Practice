@@ -1,0 +1,35 @@
+FROM python:slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . /app
+CMD ["python", "app.py"]
+
+# 1. From python:slim → Starts with a minimal Python setup. This is the base image.
+# 2. WORKDIR /app → Sets the working directory inside the container to /app.
+# 3. COPY requirements.txt . → Copies the requirements.txt file into the container's /app directory.
+# 4. COPY . /app → Copies the rest of your application code into the container's /app directory.
+# 5. RUN pip install --no-cache-dir -r requirements.txt → Installs the Python packages listed in requirements.txt.  
+# 6. CMD ["python", "app.py"] → Specifies the command to run your Flask application when the container starts.
+# 7. EXPOSE 5000 → Tells Docker that the container listens on port 5000 at runtime. This is the default port for Flask applications.
+
+# --no-cache-dir is a flag for pip install that tells pip: don’t store downloaded packages in pip’s local cache after installing them.”
+
+# Pip downloads package files (.whl or .tar.gz) from PyPI. Normally, it keeps a copy in a cache directory (~/.cache/pip) inside the container. In Docker, that cache is useless after the build — it only makes your final image bigger. So, by adding --no-cache-dir, you tell pip not to save those files, keeping your Docker image smaller and cleaner.
+
+# Cache effeciency 
+# FROM python:slim
+# WORKDIR /app
+# COPY requirements.txt .
+# COPY . /app
+# RUN pip install --no-cache-dir -r requirements.txt
+# CMD ["python", "app.py"] 
+# if u write dockerfile like this, it will cache the layer where pip install is done.Copying the whole project before installing dependencies / requirements means any change in your code will invalidate cache and reinstall Flask.
+
+# If you want to optimize the caching, you can separate the COPY commands like this:
+# FROM python:slim
+# WORKDIR /app
+# COPY requirements.txt .
+# RUN pip install --no-cache-dir -r requirements.txt
+# COPY . /app
+# CMD ["python", "app.py"] 
