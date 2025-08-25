@@ -1,0 +1,59 @@
+Multi-stage + Alpine combo 
+
+If you use Multi-stage + Alpine combo, then your final image is tiny and secure.
+
+🔹 What is Multi-stage + Alpine combo?
+Multi-stage builds: Split your Dockerfile into multiple stages —
+
+1. Build stage → Install heavy tools (compilers, dependencies).
+2. Final stage → Copy only the built app into a clean, minimal image.
+
+Alpine base image: Lightweight Linux distro (~5 MB).
+⚡ When combined, your image size shrinks drastically.
+
+Example:
+
+# ---------- Build Stage ----------
+FROM golang:1.21-alpine AS builder
+
+# Set working dir
+WORKDIR /app
+
+# Copy and download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the app
+RUN go build -o myapp
+
+# ---------- Final Stage ----------
+FROM alpine:3.19
+
+# Create non-root user for security
+RUN adduser -D appuser
+
+# Set working dir
+WORKDIR /home/appuser
+
+# Copy only the built binary from builder
+COPY --from=builder /app/myapp .
+
+# Use non-root user
+USER appuser
+
+# Run the app
+CMD ["./myapp"]
+
+
+🔹 Why this is powerful?
+✅ Small size – Final image has only alpine + compiled binary (no compilers, no Go toolchain).
+✅ Security – Runs as non-root.
+✅ Performance – Less attack surface & faster pulls/deploys.
+
+⚖️ Example Image Size Difference
+golang:1.21 (full image) → ~1 GB
+golang:1.21-alpine → ~300 MB
+multi-stage + alpine final → ~15 MB 

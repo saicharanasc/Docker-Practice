@@ -1,0 +1,10 @@
+What are Named Volumes?
+Named volumes are persistent storage managed by Docker.
+Unlike anonymous volumes, you give them a name so you can reuse them across container restarts.
+Useful for databases (like MySQL, MongoDB, PostgreSQL) where data should not be lost if a container is removed.
+
+
+Why use Named Volumes?
+✅ Data persists even if the container is stopped or removed.
+✅ Easy to back up (docker volume inspect mysql_data).
+✅ Can be shared between multiple containers if needed.

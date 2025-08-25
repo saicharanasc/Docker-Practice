@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  nodeapp:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb 
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_USER=root
+      - MONGO_PASSWORD=rootpass
+      - MONGO_DB=nodeappdb
+
+  mongodb:
+    image: mongo:alpine
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpass
+      MONGO_INITDB_DATABASE: nodeappdb
+    volumes:
+      - mongo_data:/data/db
+
+volumes:  
+  mongo_data:

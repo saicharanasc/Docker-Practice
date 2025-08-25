@@ -1,0 +1,78 @@
+🔹 1. Namespaces
+Namespaces are a Linux kernel feature that Docker uses to provide isolation.
+They make a process "think" it has its own dedicated system resources.
+
+Types of namespaces used by Docker:
+
+Namespace	What it isolates	Example
+PID	        Process IDs	        A process inside a container sees only its own processes, not host ones.
+NET     	Networking	        Each container has its own IP, ports, and network interfaces.
+IPC	        Inter-Process       Communication	Shared memory is isolated between containers.
+MNT	        Mount points        (filesystems)	A container sees only its own filesystem view.
+UTS	        Hostname & domain	Each container can have its own hostname.
+USER	    User & group IDs	A container can map users differently than the host.
+
+👉 Use of namespaces:
+They provide the "illusion" that each container is its own OS by isolating processes, networks, and filesystems.
+
+🔹 2. cgroups (Control Groups)
+cgroups are another Linux kernel feature.
+They control how much resources (CPU, memory, disk I/O, network, etc.) a container can use.
+
+Examples:
+
+Limit memory:
+docker run -m 512m nginx  (Container cannot use more than 512MB RAM)
+
+Limit CPU:
+docker run --cpus=1 nginx  (Container gets only 1 CPU core worth of processing)
+
+Without limits → container can consume all resources on host (dangerous).
+
+👉 Use of cgroups:
+They prevent a single container from exhausting all host resources and affecting other containers or the host.
+
+🔹 3. Together
+Namespaces = "Who can see what?" (isolation)
+cgroups = "How much can you use?" (resource control)
+Together, they make Docker containers lightweight VMs but sharing the host kernel.
+
+✅ Example:
+If you run MySQL in Docker:
+Namespaces: It sees only its own processes, filesystem, network stack.
+cgroups: You can limit it to 1GB RAM and 0.5 CPU so it won’t crash your whole server.
+
+
++---------------------------------------------------+
+|                  Host Machine (Linux)             |
+|                                                   |
+|  +-------------------+   +-------------------+    |
+|  |   Container A     |   |   Container B     |    |
+|  |-------------------|   |-------------------|    |
+|  | PID namespace     |   | PID namespace     |    |
+|  | NET namespace     |   | NET namespace     |    |
+|  | MNT namespace     |   | MNT namespace     |    |
+|  | UTS namespace     |   | UTS namespace     |    |
+|  | USER namespace    |   | USER namespace    |    |
+|  +-------------------+   +-------------------+    |
+|                                                   |
+|  (Namespaces → Each container has its own view)   |
+|                                                   |
+|  cgroups:                                         |
+|   - Container A: CPU 1 core, 512MB RAM            |
+|   - Container B: CPU 2 cores, 1GB RAM             |
+|                                                   |
+|  (cgroups → Prevents one container from hogging)  |
++---------------------------------------------------+
+
+✅ Key Takeaways
+Namespaces = isolation
+Each container thinks it’s the only one running, with its own processes, network, hostname, and filesystem.
+
+cgroups = limits
+Containers can’t consume infinite CPU, memory, or I/O. You (the admin) set quotas.
+
+👉 Think of it like this:
+Namespaces = separate rooms in a hostel (each student feels independent)
+
+cgroups = rules for food & electricity usage (no one student can eat all food or hog all electricity)

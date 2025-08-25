@@ -1,0 +1,24 @@
+What are Restart Policies?
+Restart policies tell Docker when to restart a container if it stops, crashes, or Docker itself restarts.
+They’re super useful for production apps (like DBs, web servers) that should stay always running.
+
+🔹 Types of Restart Policies
+You can set them in docker run --restart ... or in docker-compose.yml under a service.
+
+1. no (default)
+Container won’t restart automatically.
+Use case: Dev/test containers.
+
+2. always
+Container always restarts if it stops, no matter why.
+Even after Docker daemon restarts.
+Use case: Production apps, databases.
+
+3. unless-stopped
+Like always, but won’t restart if you manually stop the container.
+Use case: Services that should stay up but can be manually paused.
+
+4. on-failure[:max-retries]
+Restarts only if container exits with a non-zero error code.
+You can limit retries (e.g., on-failure:5).
+Use case: Batch jobs or scripts where you want retries only on crash.

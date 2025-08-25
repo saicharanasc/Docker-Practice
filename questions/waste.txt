@@ -1,0 +1,13 @@
+
+
+Act like a interview panel, & ask me questions for only Docker & docker related for 3-5 years of experience also hands-on. 
+and also do ask for some follow-up questions based on your questions. 
+Divide your questions for 2 rounds round 1 & round 2, both rounds hould include questions from docker basics to advanced 
+
+Now think like a top company interviewer & ask me the questions. 
+and interview difficulty should be medium - hard in round 1 & hard or extreme hard in round -2
+ 
+  
+
+
+In an interview i was asked to write a docker file on node-js express app & I did it as below Now validate it & let me know what are the possible interview questions on this 

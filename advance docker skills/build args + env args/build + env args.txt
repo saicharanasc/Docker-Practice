@@ -1,0 +1,69 @@
+Build time variables vs Environment variables 
+
+1. ARG (Build-time variables)
+Used only during the image build.
+Defined in the Dockerfile with ARG.
+Accessible during docker build, but not available at runtime unless explicitly passed.
+Example use case: versions, temporary config for build.
+
+# Dockerfile
+
+FROM alpine:3.19
+
+# Define ARG
+ARG APP_VERSION=1.0
+
+# Use ARG in build
+RUN echo "Building app version $APP_VERSION"
+
+# ENV is for runtime
+ENV APP_ENV=production
+
+CMD ["sh", "-c", "echo Running in $APP_ENV mode"]
+
+
+2. ENV (Runtime environment variables)
+Persist in the final image.
+Available inside the container at runtime.
+Useful for configs (DB host, API keys, etc).
+
+# docker-compose.yml
+services:
+  app:
+    build:
+      context: .
+      args:
+        APP_VERSION: "2.0"   # build-time arg
+    environment:
+      - APP_ENV=development  # runtime env
+
+✅ Best Practice
+Use ARG → for build-time stuff (versions, compiler flags, Alpine vs Debian choice).
+Use ENV → for runtime configs (DB_HOST, APP_MODE, API keys).
+⚠️ Don’t put secrets (passwords, tokens) in Dockerfile ENV or ARG → use Docker secrets or env injection in Compose/Kubernetes.
+
+
+Whenever u build, it will show building app version 1.0 
+Whenever u run, it will show the env value Running in development mode
+Tp over ride - Override at runtime (optional)
+docker run -e APP_ENV=staging app:latest --> o/p of this will be Running in staging mode
+
+U can also create a .env as below & build,run 
+APP_VERSION=3.0
+APP_ENV=development
+
+U can also create multiple .env's as below & Override them at build time 
+.env.prod 
+APP_VERSION=5.0
+APP_ENV=production
+.env.dev 
+APP_VERSION=3.0
+APP_ENV=development
+By default, Docker Compose looks for .env in the current directory. But you can override it using --env-file as below 
+
+docker-compose --env-file .env.dev up --build o/p will be Building app version 2.1 app_1 | Running version 2.1 in development mode
+
+docker-compose --env-file .env.prod up --build o/p will be Building app version 5.0 app_1 | Running version 5.0 in production mode
+
+✅ This way you don’t touch your docker-compose.yml or Dockerfile — you just swap .env files.
+ 

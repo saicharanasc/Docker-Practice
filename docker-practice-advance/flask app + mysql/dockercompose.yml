@@ -1,0 +1,51 @@
+version: '3.8' # Compose file format version
+services:
+  flaskapp:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=rootpass
+      - MYSQL_DB=flaskdb
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: flaskdb
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+
+
+#  Why do we need environment variables in Docker Compose?
+# Containers should be stateless and portable → the same image should run in dev, test, or prod without modifying the code.
+# Instead of hardcoding sensitive info (DB host, username, password) inside your code or Dockerfile, you inject them at runtime using env vars.
+# They make your app configurable and secure. For example:
+# MYSQL_HOST=mysql
+# MYSQL_USER=root
+# MYSQL_PASSWORD=rootpass
+
+# Can I run my services without them?
+# Yes, but with limitations:
+# If you remove env vars from Flask → your Flask code needs some default config to know where to connect to DB.
+# Example: If your Flask code has host="mysql", user="root", password="rootpass", then you don’t need env vars.
+# ❌ Problem: That hardcodes credentials inside your code → bad practice.
+# If you remove env vars from MySQL service:
+# MySQL requires MYSQL_ROOT_PASSWORD (or MYSQL_ALLOW_EMPTY_PASSWORD=yes).
+# Without it, the container will fail to start because MySQL needs a root password for security.
+# MYSQL_DATABASE is optional, but if you omit it, MySQL won’t auto-create the DB. You’ll have to create it manually later.
+
+# So the purpose of env vars here are:
+#1.They make your app portable.
+#2.Allow configuring DB connection without changing the code.
+#3.Keep credentials outside of the codebase (safer).
+#4.Avoid failures (since MySQL needs some minimum config).

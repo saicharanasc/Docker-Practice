@@ -1,0 +1,555 @@
+"Do you need WORKDIR?"
+
+“Technically no, but it improves clarity and reduces errors when working with relative paths. Without it, I’d have to use absolute paths everywhere, which is more error-prone.”
+
+Can you use multiple WORKDIR in the same Dockerfile?
+✅ Yes, you can.
+Each WORKDIR changes the current working directory for all subsequent commands.
+Example:
+
+FROM alpine
+
+WORKDIR /app
+COPY app.sh .
+
+WORKDIR /config
+COPY config.yml .
+
+WORKDIR /app
+CMD ["sh", "app.sh"]
+
+First, /app is the working directory when copying app.sh.
+
+Then it changes to /config for config.yml.
+
+Finally, it goes back to /app for CMD.
+
+Multiple WORKDIR is valid, but frequent switching can make the Dockerfile harder to read. Most projects stick to one main WORKDIR for simplicity.
+
+
+
+1. what is the diff b/w run & cmd? 
+run --> generally used during the image build 
+Runs once at build time, you won’t see the output when starting the container.
+Use this - RUN → Install packages, copy files, compile code, configure the image.
+Happens once at build time.
+
+cmd --> used When container starts 
+Runs every time you start the container.
+use this - CMD → Set the default program your container should run.
+Happens every time you start the container.
+
+
+2. What will happen if you add multiple CMD statements?
+
+In docker file, u can add only 1 cmd statement. if u add multiple,it will give u an warning & the last cmd statement will be considered. 
+
+ Why are only the last CMD instructions executed?
+→ Because CMD defines the default command for the container, and Docker only keeps the final one in the image metadata.
+ 
+ What if you want to run multiple commands at startup?"
+→ Use a shell form:
+
+CMD ["sh", "-c", "echo Hello && echo World"]
+
+"What’s the difference between CMD and ENTRYPOINT?"
+→ CMD provides defaults that can be overridden at runtime; ENTRYPOINT is fixed unless overridden with --entrypoint. You can also use them together.
+* Use CMD when you want the container to be flexible and easily override the whole command.
+* Use ENTRYPOINT when you want the container to always run a specific executable (e.g., python) but allow changing parameters via CMD or runtime args.
+
+-> CMD is like saying: “If you don’t tell me what to do, I’ll run this.”
+-> ENTRYPOINT is like saying: “I will always run this program, but you can give me extra arguments.”
+
+"When would you prefer ENTRYPOINT over CMD?"
+→ When you want the container to always execute a specific program (e.g., nginx or java) but allow CMD to pass arguments.
+
+3.   How do you override the CMD when running a container? 
+You can override the CMD in a Docker container simply by passing your own command at the end of the docker run command.
+ex : 
+FROM alpine
+CMD ["echo", "Hello from CMD"]
+next 
+
+docker build -t cmd-demo .
+docker run cmd-demo
+o/p of this will be Hello rom CMD 
+
+Now to override use this - docker run cmd-demo echo "Overridden CMD" now the o/p will be overridden CMD 
+
+Note : - If your Dockerfile also has an ENTRYPOINT, overriding works differently — the arguments you pass will go to the ENTRYPOINT unless you use --entrypoint to replace it entirely.
+
+* below are the 3 different CMD override cases — including how it behaves when ENTRYPOINT is present.
+1. basic which we did in above example 
+2. ENTRYPOINT with CMD 
+
+FROM alpine
+ENTRYPOINT ["echo"]
+CMD ["Hello from CMD"]
+
+docker build -t cmd-entry .
+docker run cmd-entry
+
+then O/P is Hello from CMD 
+
+to override - docker run cmd-entry "Overridden CMD" Here though u have both entry point & cmd, u're overriding cmd only bcoz here cmd acts as deafault arguments to entry points
+
+3. Overriding ENTRYPOINT & CMD
+
+FROM alpine
+ENTRYPOINT ["echo"]
+CMD ["Hello from CMD"]
+
+Overriding entrypoint as below
+docker run --entrypoint cat cmd-entry /etc/os-release
+
+
+4  . What happens when the container finishes printing this message?
+the process inside the container exits immediately, and the container stops.
+Containers only run as long as their main process (PID 1) is running. 
+
+How can you keep the container running after printing?
+1. we can use a while loop in shell script as below 
+#!/bin/sh
+echo "hi welcome to docker"
+while true; do sleep 1; done
+
+& in docker file 
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+CMD ["/start.sh"]
+
+2. v can club the commands 
+CMD sh -c "echo 'hi welcome to docker' && tail -f /dev/null"
+
+
+5. Can you modify it so it prints continuously every 5 seconds instead of exiting?
+
+Yes we can do this via shell script. v can write a small code in shell script using while do 
+ex: 
+#!/bin/sh
+while true
+do
+  echo "hi welcome to docker"
+  sleep 5
+done
+
+FROM alpine
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+CMD ["/start.sh"]
+
+or 2nd way of doing this is 
+
+FROM alpine
+CMD sh -c "while true; do echo 'hi welcome to docker'; sleep 5; done"
+
+Runs the given string inside a shell (sh in Alpine is BusyBox shell).
+
+The -c flag means: "Execute the following command string".
+
+Why use sh -c instead of directly writing the loop in CMD array form?
+*  CMD array form (e.g., CMD ["while", "true", "do", "echo hi", "done"]) won’t work because:
+*  Array form does not do shell parsing.
+*  Keywords like while, do, done are shell syntax, not standalone executables.
+*  Using sh -c starts a shell process that can interpret shell control structures (loops, variables, pipes, etc.).
+*  Wthout sh -c, Docker would try to find a binary called "while" and fail.
+
+What happens if we omit sleep 5?
+The loop will run as fast as possible:
+Consumes 100% CPU (because there’s no pause between iterations).
+Prints thousands of lines per second, filling logs quickly.
+This is wasteful and could crash a system if logging is heavy.
+
+How do you stop this container?
+2 ways we can do 1. docker stop container id 2. docker kil container id 
+
+How would you modify this so it runs for only 1 minute and then stops?
+we can add timeout option as below
+CMD sh -c "timeout 60 sh -c 'while true; do echo hi welcome to docker; sleep 5; done'"
+
+6.Can rewrite this using RUN instead of CMD and explain the difference in behavior?
+
+RUN is for build-time commands that modify the image. If I use it for an infinite loop, the image will never finish building. 
+CMD is for defining the default process at runtime, so an infinite loop there keeps the container running after startup. For this ‘Hello Docker’ example, CMD is correct.
+
+CMD ["echo", "Hello, Docker!"] 
+RUN ["echo", "Hello, Docker!"]
+
+7. If you wanted this to work on any Linux base image, what changes would you make?
+That’s basically asking:
+“How do you make sure your container behaves the same no matter which Linux base image you use (Alpine, Debian, Ubuntu, BusyBox, etc.)?”
+
+CMD sh -c "end=$((SECONDS+60)); while [ $SECONDS -lt $end ]; do echo hi; sleep 5; done" ......> this will fail in Alpine because $SECONDS doesn’t exist in BusyBox sh. 
+The fix for “works everywhere”
+We choose only POSIX(Portable Operating System Interface) commands (date, sleep, echo) — these are available in any Linux image.
+examples for posix commands : cp, mv, ls, cat tail, kill, who, uname 
+
+
+8. How would you make this container keep running so it doesn’t exit immediately?  
+
+1.we can use while loop
+2. use tail -f on a file as below CMD tail -f /dev/null 
+/dev/null is an empty stream, so tail -f just waits forever.
+3. u can keep printing something continuously 
+
+9. What are the different syntaxes for CMD and when should you use shell form vs exec form?
+Docker supports two main syntaxes for CMD 
+1. Shell Form 
+CMD echo "Hello Docker" ---> Ths runs inside a shell /bin/sh -c "echo Hello Docker"
+Best for quick demos or where you need shell tricks.
+2. EXEC Form 
+CMD ["echo", "Hello Docker"] ---> Runs directly as a process (echo becomes PID 1).
+Best for prod apps as it gives faster startup 
+
+10. If the base image already has an entrypoint, how will CMD interact with it?
+If a base image already has an ENTRYPOINT, your CMD will be treated as arguments to it — unless you override ENTRYPOINT with --entrypoint when running the container.
+
+11. What’s the size of the final image, and how can you check it?
+The size of the final Docker image depends on:
+The base image you used (e.g., alpine ~5 MB vs ubuntu ~77 MB)
+Any extra layers you added (e.g., installing packages, copying files)
+Whether the image was optimized (e.g., multi-stage builds, cleaning caches)
+
+
+12. Can you explain what happens internally when you run docker build with this Dockerfile?
+1️⃣ Docker reads the Dockerfile
+The Docker daemon parses your Dockerfile line-by-line.  Each instruction (FROM, CMD, etc.) creates a layer in the image.
+2️⃣ FROM alpine
+Docker checks locally if the alpine image exists in your cache.
+If yes → it uses the cached copy.
+If no → it pulls alpine:latest from Docker Hub (about 5 MB).
+This becomes the base layer of your new image.
+3️⃣ CMD ["echo", "hi welcome to docker"]
+CMD does not run now — it only sets the default command that will run when the container starts.
+This is stored in the image metadata, not as a separate filesystem layer.
+4️⃣ Image layers & caching
+Docker uses UnionFS (like OverlayFS) to stack layers.
+Only FROM alpine creates a new layer here — CMD just updates metadata.
+At this point, your image has:
+Base image layer → alpine
+Metadata → default command (CMD)
+5️⃣ Image commit
+Docker creates a final read-only image with an image ID.
+The image is stored in /var/lib/docker (or equivalent storage backend).
+6️⃣ When you run docker run hello-docker
+Docker creates a container from the image:
+Creates a thin read-write layer on top of the image.
+Starts the default command from CMD.
+In this case:
+echo "hi welcome to docker"
+Output is sent to the container’s STDOUT → shown in your terminal.
+Once the command finishes, the container exits
+
+🔹 What is UnionFS (Union File System)?
+UnionFS (Union File System) is a filesystem service that lets you stack multiple directories (layers) on top of each other to form a single, unified view.
+
+👉 In simpler words:
+Imagine you have Layer A (base OS files)
+And Layer B (your app files)
+UnionFS merges them into a single filesystem view, so when you look inside the container, you see files from both layers as if they are one filesystem.
+
+🔹 How it works
+UnionFS uses a concept called copy-on-write (CoW).
+Lower layers are read-only (like your base image ubuntu:20.04).
+When you make changes (e.g., installing a package), Docker doesn’t modify the base layer. Instead, it creates a new writable layer on top.
+
+👉 Example stack:
+Layer 1: ubuntu:20.04 (read-only)
+Layer 2: apt-get install python3 (read-only)
+Layer 3: pip install flask (read-only)
+Layer 4: your source code (read-only)
+Layer 5: container writable layer (read/write)
+
+
+When the container runs, all layers are merged by UnionFS, so it looks like one big filesystem.
+------------------------------------------------------------------------------------- 
+Python flask related questions 
+
+1. Why WORKDIR /app instead of using cd in RUN?
+WORKDIR - sets the default working directory for all subsequent instructions in the Dockerfile (RUN, COPY, CMD, ENTRYPOINT).
+
+CD - Only changes directory for that single RUN layer — the next instruction starts back at /(slash)
+
+Why not just use cd?", you can say:
+In Docker, each RUN creates a new layer, so changing directories in one RUN doesn’t persist to the next. WORKDIR sets the working directory persistently for the build process and for when the container starts, making it cleaner and less error-prone.
+
+
+2. What does EXPOSE actually do? Does it publish the port automatically?
+EXPOSE in a Dockerfile does not automatically make your app reachable from your host — it’s just metadata that says “This container will listen on this port”. you have to publish it manually with -p 
+
+few questions on expose 
+1️⃣ Does EXPOSE open a port?
+ No. It’s just metadata in the image to indicate intended ports.
+
+Follow-up → How do you actually make it reachable? (docker run -p host:container or Compose ports: mapping).
+
+2️⃣ What happens if you don’t use EXPOSE?
+The container will still run fine.
+Networking will still work, but others won’t know what port your service listens on.
+In Docker networks, service discovery doesn’t require EXPOSE.
+
+3️⃣ Difference between EXPOSE and -p flag?
+EXPOSE → Documentation + metadata only.
+-p → Actively publishes and maps ports between host and container.
+
+4️⃣ How does EXPOSE work in multi-container setups?
+In Docker Compose, if two containers are on the same network, one can talk to another’s EXPOSEd port without -p.
+Example: web → db:3306.
+
+5️⃣ Can you EXPOSE multiple ports?
+Yes:
+EXPOSE 80 443 8080
+Or multiple lines:
+EXPOSE 80
+EXPOSE 443
+
+6️⃣ What about protocol types?
+You can specify TCP or UDP explicitly:
+EXPOSE 53/udp
+EXPOSE 80/tcp
+
+7️⃣ Will EXPOSE make the port accessible from outside the host?
+No — docker run -p only binds to the host’s interface (default 0.0.0.0 for all interfaces unless overridden).
+For remote access, you must also ensure firewall & network rules allow it.
+
+8️⃣ Does EXPOSE affect image size or performance?
+No impact — it’s only metadata, doesn’t modify the runtime networking stack.
+
+9️⃣ What’s the default protocol if you don’t specify?
+TCP by default.
+
+🔟 Can EXPOSE be overridden?
+Yes — docker run with --expose or -p will override or add new mappings.
+
+3. Difference between COPY and ADD? Which is better here and why?
+COPY - Copies files or directories from your local build context into the image.
+COPY src_path dest_path
+Copy Does not extract archives & Does not download from URLs.
+
+ADD - It does everything copy does plus Can extract local tar archives into the destination & Can download from URLs (HTTP/HTTPS). 
+
+“I’ll use COPY because it’s explicit and only does one thing — copy files. I’m not extracting archives or downloading from URLs, so ADD’s extra behavior is unnecessary and could introduce unpredictability in the build process.”
+
+
+4.How can you make this image smaller?
+1. we can use small images like slim 
+2. instead of copying all, u can copy only whatever needed
+3. u can create a .dockerignore
+4. multi stage docker builds 
+
+5. If requirements.txt changes, what happens to Docker’s build cache?
+Docker builds images layer by layer.  If nothing changes in a layer’s command or its inputs (files it depends on), Docker reuses the cached layer instead of rebuilding it.
+If requirements.txt changes
+The COPY requirements.txt . layer hash changes (because file content is different)This invalidates the cache for that layer and all layers after it.The pip install step will run again, installing dependencies from scratch.
+
+6. How would you use multi-stage builds here?
+1st I will install ally dependencies in build stage & here if i needed i can also remove extra files if any 
+2nd stage which is my run time I will copy only the installed one's here. 
+
+# ===== Stage 1: Build stage =====
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies (only needed for pip compilation)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install packages into /install
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ===== Stage 2: Runtime stage =====
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Copy only installed packages from builder stage
+COPY --from=builder /install /usr/local
+
+# Copy application source code
+COPY . .
+
+# Expose Flask default port
+EXPOSE 5000
+
+# Run Flask app
+CMD ["python", "app.py"]
+
+
+If I were your interviewer, after you wrote this, I might ask:
+
+Why use --prefix instead of installing directly in stage 1? (Answer: so we can copy the packages easily into the second stage without extra paths.)
+
+How does multi-stage help with security? (Answer: no unused build tools in final image → smaller attack surface.)
+
+Could we use FROM scratch for the runtime stage? (Possible, but for Python, it’s not practical unless you manually bring in the interpreter.)
+
+
+7. Why is running Flask with python app.py not production-ready?
+because 
+1. Flask’s default server (Werkzeug) is meant only for local development.
+2. It’s single-threaded by default and can’t efficiently handle many concurrent requests.
+3. If the app crashes, there’s nothing to restart it automatically.
+4.In production, you’d want a process manager (e.g., gunicorn, uWSGI, supervisord) or orchestration (Kubernetes, ECS, etc.) to ensure uptime.
+5. Production usually runs behind a reverse proxy like Nginx, Apache, or Traefik.
+6.Reverse proxy handles TLS termination, static files, and load balancing, while your app server focuses only on application logic.
+
+1️⃣ “How would you deploy this in production?”
+
+I’d package the Flask app into a Docker image, but instead of using Flask’s built-in dev server, I’d run it with a WSGI server like Gunicorn or uWSGI for production readiness.
+I’d deploy it behind a reverse proxy like Nginx or Traefik to handle SSL termination, static assets, and load balancing.
+The deployment could be done in Kubernetes, AWS ECS, or Docker Swarm, depending on infrastructure.
+I’d also configure environment variables for secrets, enable health checks, and use horizontal scaling if traffic spikes.
+For logs, I’d output to stdout/stderr so they can be collected by the container runtime or centralized logging tools.
+
+2️⃣ “What WSGI servers do you know, and why use them?”
+
+I’m familiar with Gunicorn, uWSGI, and Waitress.
+WSGI (Web Server Gateway Interface) servers act as the bridge between the web server and the Python application.
+They’re designed for production use — they can spawn multiple worker processes, handle concurrency, and are more fault-tolerant than Flask’s built-in server.
+I usually prefer Gunicorn for Flask because it’s lightweight, works well with async workers if needed, and is easy to configure.
+uWSGI is more feature-rich and configurable but also more complex. Waitress is good for Windows or when I need a pure-Python option.
+
+3️⃣ “Why put Flask behind Nginx?”
+
+Nginx is extremely efficient at handling static files, SSL termination, and high volumes of concurrent connections.
+Putting Flask directly on the internet isn’t ideal — the WSGI server is optimized for application logic, not serving static content or TLS.
+Nginx can:
+
+Terminate HTTPS and handle certificates (SSL offloading)
+Serve static assets directly, freeing the app from doing it
+Load balance requests to multiple Gunicorn workers or containers
+Protect the app with features like rate limiting and request filtering
+This separation of concerns improves performance, security, and scalability.
+
+
+8. How would you pass environment variables (like FLASK_ENV=production) into the container?
+we can do this in 3 ways:
+1. At Runtime with docker run -e.Pass them directly when starting the container:
+docker run -d -p 5000:5000 \
+    -e FLASK_ENV=production \
+    -e SECRET_KEY=mysecret \
+    flask-gunicorn
+2. Using an .env File
+Create a file called .env:
+FLASK_ENV=production
+SECRET_KEY=mysecret
+Run this with : docker run --env-file .env -p 5000:5000 flask-gunicorn
+3. In the Dockerfile with ENV 
+ENV FLASK_ENV=production
+ENV SECRET_KEY=mysecret
+
+9. How do you make Flask listen on 0.0.0.0 inside Docker?
+By default, Flask’s development server binds to 127.0.0.1 (localhost), which means it can’t be accessed from outside the container.
+Inside Docker, you need to make it listen on 0.0.0.0 so it accepts connections from any network interface.
+Using ENV variables: 
+docker run -p 5000:5000 \
+    -e FLASK_APP=app.py \
+    -e FLASK_RUN_HOST=0.0.0.0 \
+    flask-image
+
+
+10. How do you bind the container’s port to the host? 
+docker run -p <host_port>:<container_port> image_name
+
+
+11.How would you persist logs from this container?
+For persisting logs from your Flask container, you have a few solid approaches — and which one you choose depends on whether you want logs to stay inside Docker, go to the host filesystem, or stream to a log management system.
+
+1️⃣ Use Docker’s Built-in Logging Driver (Default: json-file)
+By default, Docker stores container logs in JSON files on the host:
+/var/lib/docker/containers/<container-id>/<container-id>-json.log
+Here we should do log rotation as the file might grow big.
+
+2️⃣ Bind-Mount a Host Directory for Logs
+
+3️⃣ Use a Logging Container / Sidecar
+Run a sidecar container that collects logs from your main app container and ships them to: (external log aggregation)
+ELK Stack (Elasticsearch, Logstash, Kibana)
+Fluentd
+Splunk
+Graylog
+
+------------------------------------------------------------------------------------
+
+Node-Js Express app questions
+
+1. Why COPY package.json before COPY .
+"I copy package.json first to maximize Docker’s layer caching and avoid reinstalling dependencies unnecessarily, making builds faster and more efficient."
+
+2. Why use exec form (["node", "app.js"]) instead of shell form? 
+is mostly about signal handling, process management, and avoiding an extra shell process.
+because Shell form wraps your command in /bin/sh -c by default.This means there’s one more process between Docker and your app.Exec form runs your process directly as PID 1 inside the container.
+
+3. What does --production in npm install do?
+npm install --production skips devDependencies and installs only runtime dependencies. In Docker, this makes the image smaller, faster, and more secure because we don't ship development tools to production.
+
+"We skip devDependencies in production to reduce image size, improve security, and ensure only runtime dependencies are shipped. Dev tools like test frameworks don’t belong in production because they increase risk and slow down deployments."
+
+4. What happens if you don’t specify a CMD?
+It depends on whether the base image already has one:
+ If the base image has a CMD,Your image will inherit that CMD from the base image.
+ If the base image has no cmd then, Docker will require you to specify a command at runtime with docker run.If you don’t, you’ll get an error.
+ If an ENTRYPOINT is present without CMD.CMD is often used as default arguments for ENTRYPOINT.If you skip CMD, only ENTRYPOINT will run.
+
+5. What are the trade-offs of using Alpine (small size vs. possible missing libs)?
+"Alpine gives smaller images and better security, but it may miss system libraries, especially glibc, which can cause issues when installing native dependencies. It can also slow down builds due to extra packages needed. For pure JavaScript Node apps it’s fine, but for native modules or heavier builds, I might use Debian Slim for compatibility."
+
+6. Is running node app.js production-ready? (No, use process managers like PM2 or WSGI-like alternatives for Node)
+No, It's not.I’d either run it with pm2-runtime inside the container, or let the orchestrator handle restarts while ensuring my app supports clustering and graceful shutdown. I’d also run it behind a reverse proxy like Nginx for SSL termination, request buffering, and static file serving.
+
+RUN npm install pm2 -g
+CMD ["pm2-runtime", "app.js"]
+
+7. What’s the difference between COPY --from=build and COPY . .?
+COPY --from=build → Copies files from another build stage inside the same Dockerfile (like compiled output or binaries).
+COPY . . → Copies from the host machine’s build context into the container.
+Using --from=build avoids including extra local files and ensures you only get the clean, built artifacts.
+
+8. How do you avoid running the container as root?
+To avoid running a container as root, you explicitly create and use a non-root user inside your Dockerfile, then make the app run under that user.
+
+Why avoid root inside Docker?
+Even though containers are isolated, the root user inside a container is still root on the host’s kernel namespace. If the container is compromised, it can escalate privileges or break out more easily.
+
+9. How would you run multiple Node.js apps in the same container? 
+"In Docker best practice, we run one Node.js app per container and use orchestrators like Docker Compose or Kubernetes to run multiple services together. If I absolutely had to run multiple apps in one container, I’d use a process manager like PM2 or Supervisord, but that’s the exception, not the rule."
+
+10. How would you deploy this container to Kubernetes or AWS ECS?
+"For Kubernetes, I’d package the app into a Docker image, push it to a registry, create a Deployment for running replicas, and expose it via a Service (LoadBalancer or Ingress).
+For ECS, I’d push the image to Amazon ECR, define a Task Definition with container settings, and run it as an ECS Service with Fargate or EC2, possibly behind an Application Load Balancer."
+
+11. How would you connect this container to a database in another container?
+"I’d place both containers in the same network so they can communicate by service name. For local dev, I’d use Docker Compose with service discovery, and in production, I’d rely on Kubernetes/ECS service discovery or managed DB services like RDS for durability."
+
+12. How do you handle secrets (API keys) without baking them into the image?
+“I never bake secrets into the image because they’d be stored in the image layers forever. I pass them at runtime using environment variables, or better yet, encrypted secret stores like Docker secrets, Kubernetes secrets, or AWS Secrets Manager, so they remain encrypted at rest and in transit.”
+
+-------------------------------------------------------------------------------------
+Nginx Custom Config 
+
+1.  Why is /etc/nginx/nginx.conf the default config path?
+This is the compiled-in default location set by Nginx at build time (--conf-path=/etc/nginx/nginx.conf).
+Unless overridden with nginx -c /path/to/config, Nginx will always load config from there.
+
+2. What’s the difference between putting configs in nginx.conf vs conf.d/default.conf?
+nginx.conf → Main configuration file. Defines global settings (worker processes, logging, default HTTP server block includes, etc.).
+conf.d/*.conf → Additional site/server configs. 
+
+3. How would you reload Nginx without restarting the container?
+nginx -s reload
+
+4. How do you run Nginx as non-root in a container
+RUN chown -R nginx:nginx /usr/share/nginx/html
+USER nginx
+Also update nginx.conf to listen on unprivileged ports (>1024) or use setcap to bind 80 without root
+
+
+-----------------------------------------------------------------------------------
+
+Static HTML site with Nginx 
+
+1. 

@@ -1,0 +1,6 @@
+FROM alpine
+WORKDIR /app
+COPY basic.sh /app
+RUN chmod +x /app/basic.sh
+CMD ["./basic.sh"]
+

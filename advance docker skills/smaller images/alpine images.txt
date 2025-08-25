@@ -1,0 +1,14 @@
+Why Alpine?
+Tiny base image (~5 MB) vs Ubuntu/Debian (~100 MB+)
+Good for microservices → faster build, pull, and deploy
+Helps reduce attack surface (less software installed)
+⚠️ Caveat: Some libraries/tools may not be available by default (e.g., bash, glibc). You may need to install them manually.
+
+🔹 Best Practices with Alpine
+✅ Use --no-cache when installing packages:
+RUN apk add --no-cache curl
+
+✅ Pin versions to avoid breaking builds:
+RUN apk add --no-cache python3=3.11.7-r0
+
+✅ Install only what’s necessary.

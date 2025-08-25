@@ -1,0 +1,28 @@
+FROM node:alpine 
+WORKDIR /app 
+COPY package*.json .
+RUN npm install 
+COPY . .
+CMD ["npm", "start"]
+
+# y i need package* ?
+# is because of package-lock.json (or npm-shrinkwrap.json).
+
+# What are these files?
+# package.json → Defines your app’s dependencies (e.g. "express": "^4.18.2").
+# package-lock.json → Locks exact versions (e.g. "express": "4.18.2"). This ensures every install gets the same dependency tree, avoiding “works on my machine” issues.
+
+# 📌 Why package*?
+# package* is a wildcard that matches:
+# package.json
+# package-lock.json
+# By copying both, you make sure Docker has all dependency info.
+# Then npm install will install exact versions from package-lock.json if it exists.
+
+# 📌 If you only copy package.json
+# Docker will ignore package-lock.json.
+# npm install may pull slightly different versions → possible bugs in production.
+
+# ✅ Best practice:
+# Always use package*.json to keep builds consistent and predictable.
+

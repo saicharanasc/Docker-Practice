@@ -1,0 +1,19 @@
+FROM python:slim
+WORKDIR /app
+COPY requirements.txt . 
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py .
+CMD ["python", "app.py"]
+
+
+# CMD ["python", "app.py"]
+# This line tells Docker what command to run when the container starts.
+# python → This is the executable (the program inside the container).
+# It runs the Python interpreter that comes with the base image you used (for example python:3.9-slim).
+# app.py → This is the script (your application code).
+# It’s your Python program, typically a Flask, Django, or any Python script that contains your app’s entry point.
+
+
+#“What happens if you remove python and just use app.py?”
+# You should answer:
+#It depends. If the script has a shebang and executable permission, it may work. But typically we explicitly use python app.py for portability and predictability.

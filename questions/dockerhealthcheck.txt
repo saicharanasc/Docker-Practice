@@ -1,0 +1,69 @@
+A HEALTHCHECK in a Dockerfile tells Docker how to test if your container is still working as expected.
+If the health check fails repeatedly, Docker marks the container as unhealthy.
+
+Syntax
+HEALTHCHECK [OPTIONS] CMD <command>
+
+
+Common options:
+
+--interval=30s → How often to run the check (default: 30s)
+
+--timeout=10s → How long to wait before considering the check failed (default: 30s)
+
+--start-period=30s → Initial grace period after container starts
+
+--retries=3 → Number of consecutive failures before marking unhealthy
+
+Example 1 – Simple Ping Test
+FROM alpine:3.20
+RUN apk add --no-cache curl
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8080/ || exit 1
+CMD ["httpd", "-D", "FOREGROUND"]
+
+
+How it works:
+
+Every 30 seconds, Docker runs curl -f http://localhost:8080/
+
+If it fails, health check status becomes unhealthy
+
+Example 2 – Flask App with Healthcheck
+FROM python:3.11-slim
+WORKDIR /app
+COPY app.py .
+RUN pip install flask
+EXPOSE 5000
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/ || exit 1
+CMD ["python", "app.py"]
+
+
+Test health status:
+
+docker ps
+docker inspect <container_id> | grep -A 5 Health
+
+Example 3 – Custom Script
+
+You can create a health check script:
+
+#!/bin/sh
+if curl -f http://localhost:8080/; then
+  exit 0
+else
+  exit 1
+fi
+
+
+Then in Dockerfile:
+
+COPY healthcheck.sh /usr/local/bin/
+HEALTHCHECK CMD ["sh", "/usr/local/bin/healthcheck.sh"]
+
+Why Use HEALTHCHECK
+
+Detects if app is stuck or crashed even if the container process is still running.
+
+Useful for orchestrators (Docker Swarm, Kubernetes) to restart unhealthy containers automatically.

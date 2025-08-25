@@ -1,0 +1,27 @@
+services:
+  php-apache:
+    build: .
+    ports:
+       - "8081:80"
+    depends_on:
+      - mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: sai
+      MYSQL_PASSWORD: pass
+      MYSQL_DB: mydb 
+
+  mysql:
+    image : mysql:latest
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mydb
+      MYSQL_USER: sai
+      MYSQL_PASSWORD: pass
+    volumes:
+      - mysql_db:/var/lib/mysql
+  
+volumes:
+  mysql_db:

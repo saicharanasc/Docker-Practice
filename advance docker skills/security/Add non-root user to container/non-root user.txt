@@ -1,0 +1,107 @@
+Non-root user to container 
+Running containers as non-root user is one of the most important security best practices in Docker. By default, most images run as root inside the container (dangerous if exploited).
+
+🔹 Why use a non-root user?
+Prevent privilege escalation if the app is hacked.
+Restricts file system access.
+Closer to production-grade security standards (e.g., Kubernetes best practices require non-root).
+
+🔹 Example: Node.js App with Non-root User
+FROM node:18-alpine
+
+# Set working dir
+WORKDIR /app
+
+# Add non-root user and group
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copy package files & install deps
+COPY package*.json ./
+
+RUN npm install
+
+# Copy application code
+COPY . .
+
+# Change ownership of app files
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE 3000
+CMD ["npm", "start"]
+
+
+
+🔹 Key Parts
+addgroup -S appgroup → create group.
+adduser -S appuser -G appgroup → create user and add to group.
+chown -R appuser:appgroup /app → ensure app files are accessible.
+USER appuser → switch from root to non-root user.
+
+
+How it prevents from disaster?
+Let’s break this down with a real-world example.
+
+🔹 By default: Containers run as root
+
+Inside a container, the root user = superuser (just like on Linux).
+If an attacker finds a security hole in your app (say SQL injection or RCE), they can run commands inside the container as root.
+With root access, they could:
+Modify any file in the container.
+Install malicious tools.
+Try to escape the container and gain access to the host system.
+
+🔹 With non-root user
+You create and run the app under a normal user (say appuser).
+Even if the attacker hacks into the app:
+They can only run commands as appuser, not as root.
+appuser won’t have permission to change system files (/etc/passwd, /bin/bash, etc.).
+They can’t bind to privileged ports (<1024) or mess with host resources.
+
+🔹 Example Scenario
+👉 Imagine your Flask app has a vulnerability that lets an attacker upload and execute a script.
+If container runs as root:
+Attacker runs:
+apk add --no-cache nmap
+nmap 172.17.0.1
+They just installed nmap (as root).
+They can scan the host machine or other containers.
+They could even mount sensitive files from host if misconfigured.
+
+If container runs as non-root (appuser):
+Attacker runs:
+apk add --no-cache nmap
+Command fails → Permission denied.
+They’re stuck with very limited access, only to files owned by appuser.
+Much harder to escalate privileges.
+
+✅ So, running as non-root is like putting a seatbelt + airbag on your container.
+Even if something bad happens (hack), damage is contained.
+
+
+if your container is running as root and an attacker manages to exploit your application, they will immediately become root inside the container. That is dangerous because:
+
+🔹 Why it’s dangerous if root is exploited?
+1. Full control inside container:
+Root can read/write/delete any file in the container.
+Example: they can modify your source code, steal credentials (like .env, DB password), or shut down the app.
+
+2. Install tools for further attack
+Root can install hacking tools (e.g., nmap, curl, ssh) to scan and attack other systems.
+They can also start malicious processes (crypto miners, malware).
+
+3. Try to escape the container
+Containers share the same Linux kernel as the host.
+If there’s a kernel vulnerability, root inside the container could escalate to root on the host machine.
+Then your whole server is compromised.
+
+4. Attack other containers
+With root access, attacker can exploit Docker socket mounts or network to interfere with other containers.
+
+5. Access to sensitive host files
+If you’ve mistakenly mounted volumes like /var/run/docker.sock or /etc, root inside the container can:
+Start/stop other containers.
+Steal host configuration.
+Add new users on host.

@@ -1,0 +1,11 @@
+below are the docker compose basics
+
+services: – containers you want to run (web, db, cache, etc.)
+
+ports: – maps container port to host port (5000:5000)
+
+depends_on: – ensures one service starts before another
+
+volumes: – persistent data storage
+
+environment: – pass environment variables (DB user, password, etc.)
